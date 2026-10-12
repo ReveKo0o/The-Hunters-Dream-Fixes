@@ -322,6 +322,18 @@
             output.innerHTML = '';
             let matched = false;
 
+            // Check for Disable HTTP Requests patch applied
+            if (text.includes('PatchMemory: Applied patch: Disable HTTP Requests')) {
+                matched = true;
+                output.innerHTML += renderDisableHttpPatchSolution();
+            }
+
+            // Check for Network / ShadNet disabled flags in emulator init
+            if (text.includes('isConnectedToNetwork: false') || text.includes('isShadNetEnabled: false')) {
+                matched = true;
+                output.innerHTML += renderNetworkFlagsSolution();
+            }
+
             // Check for SSL / Disable HTTPS error
             if (text.includes('error=10 (SSL server verification failed)') || text.includes('ss.info')) {
                 matched = true;
@@ -338,7 +350,7 @@
                 output.innerHTML = `
                     <div class="solution-card" style="border-left-color: var(--success-green);">
                         <div class="solution-title" style="color: var(--success-green);">No Critical Error Signatures Detected</div>
-                        <div class="solution-steps">The uploaded log file does not match known server or SSL error patterns. Please verify your setup or share this log in the Discord support channel.</div>
+                        <div class="solution-steps">The uploaded log file does not match known server or configuration error patterns. Please verify your setup or share this log in the Discord support channel.</div>
                     </div>
                 `;
             }
@@ -349,7 +361,7 @@
         // 2. SCREENSHOT OCR ANALYZER LOGIC
         function handleImageFile(file) {
             if (!file) return;
-            document.getElementById('file-info').innerText = `Loaded Screenshot: ${file.name} | Processing OCR OCR...`;
+            document.getElementById('file-info').innerText = `Loaded Screenshot: ${file.name} | Processing OCR...`;
             document.getElementById('solution-output').innerHTML = '<div class="solution-steps">Scanning image text via OCR engine, please wait...</div>';
             document.getElementById('solution-container').style.display = 'block';
 
@@ -381,14 +393,36 @@
         }
 
         // REUSABLE SOLUTION TEMPLATES (ENGLISH)
+        function renderDisableHttpPatchSolution() {
+            return `
+                <div class="solution-card">
+                    <div class="solution-title">[!] Conflicting Patch Enabled: Disable HTTP Requests</div>
+                    <div class="solution-steps">
+                        The log shows that the <b>Disable HTTP Requests</b> patch is currently active, which blocks multiplayer and server communication.<br>
+                        <b>Resolution:</b> Right-click Bloodborne in your shadPS4 game list, open <b>Patches</b>, and ensure that the checkbox next to <b>Disable HTTP Requests</b> is <u>unchecked</u>.
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderNetworkFlagsSolution() {
+            return `
+                <div class="solution-title">[!] Network / ShadNet Disabled in Configuration</div>
+                <div class="solution-steps">
+                    The log indicates that either network connectivity or ShadNet is disabled (<code>isConnectedToNetwork: false</code> or <code>isShadNetEnabled: false</code>).<br>
+                    <b>Resolution:</b> Open your <code>config.json</code> file and ensure both parameters are set to <code>true</code> under the network settings.
+                </div>
+            `;
+        }
+
         function renderServerInfoSolution() {
             return `
                 <div class="solution-card">
                     <div class="solution-title">[!] Failed to Acquire Bloodborne Server Information</div>
                     <div class="solution-steps">
                         <ol>
-                            <li><b>ShadNet Account Required:</b> Make sure you have an active ShadNet account and are logged in via shadqtlauncher. If you don't have an account, register at <a href="https://shadnet.shadps4.net/" target="_blank" style="color: var(--highlight-gold);">https://shadnet.shadps4.net/</a>.</li>
-                            <li><b>Verify host_overrides.json:</b> Ensure the contents inside your <code>shadps4/host_overrides.json</code> file match:
+                            <li><b>ShadNet Account Required:</b> Make sure you have an active ShadNet account and are logged in via <i>shadqtlauncher</i>. If you don't have an account, register at <a href="https://shadnet.shadps4.net/" target="_blank" style="color: var(--highlight-gold);">https://shadnet.shadps4.net/</a>.</li>
+                            <li><b>Verify <i>host_overrides.json</i>:</b> Ensure the contents inside your <code>shadps4/host_overrides.json</code> file match:
                                 <div class="code-block">{
   "_comment": "shadPS4 HTTP host overrides.",
   "https://ss4.scej-network.jp:20443": "https://thehuntersdream.com:20443",
@@ -397,7 +431,7 @@
   "bb-playlog-prod.s3.amazonaws.com": "https://thehuntersdream.com:20443"
 }</div>
                             </li>
-                            <li><b>Verify config.json:</b> Confirm that the <code>"Network"</code> block in your <code>config.json</code> matches:
+                            <li><b>Verify <i>config.json</i>:</b> Confirm that the <code>"Network"</code> block in your <code>config.json</code> matches:
                                 <div class="code-block">"Network": {
     "connected_to_network": true,
     "disable_https": true,
@@ -412,7 +446,7 @@
                             <li><b>Alternative Configuration / Cleanup:</b> If the issue persists:
                                 <ul>
                                     <li>Delete the <code>custom_configs</code> directory inside your shadps4 folder (unless you hold specific custom profiles for other games).</li>
-                                    <li>Or, in shadqtlauncher, right-click Bloodborne &gt; <b>Game Specific Settings</b> &gt; <b>Experimental</b>. Set Server: <code>srv.shadps4.net:31313</code> and WebAPI Server: <code>http://srv.shadps4.net:31315</code>. Enable <b>uPnP</b> if you plan to use co-op/invasion.</li>
+                                    <li>Or, in <i>shadqtlauncher</i>, right-click Bloodborne &gt; <b>Game Specific Settings</b> &gt; <b>Experimental</b>. Set <i>Server:</i> <code>srv.shadps4.net:31313</code> and <i>WebAPI Server:</i> <code>http://srv.shadps4.net:31315</code>. Enable <b>uPnP</b> if you plan to use co-op/invasion tools.</li>
                                 </ul>
                             </li>
                         </ol>

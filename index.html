@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Hunter's Dream </title>
+    <title>The Hunter's Dream // PC Log & Error Inspector</title>
 
     <!-- Google Font: EB Garamond -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
+
+    <!-- Tesseract OCR Library for client-side image text recognition -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <style>
         /* Exact CSS variables extracted from DevTools */
@@ -23,6 +26,8 @@
             --text-dim: #7a766d;
             --highlight-gold: #c9a96a;
             --panel: linear-gradient(180deg, rgba(14, 17, 21, 0.78), rgba(8, 10, 13, 0.88)), url(https://dev.thehuntersdream.com/static/img/game/slate.jpg) center / cover;
+            --accent-bright-red: #b3261e;
+            --success-green: #00ff66;
         }
 
         /* Body & Full Background Implementation */
@@ -45,9 +50,9 @@
         header {
             width: 100%;
             text-align: center;
-            padding: 50px 0 30px 0;
+            padding: 50px 0 20px 0;
             background: transparent;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         h1 {
@@ -74,11 +79,38 @@
             box-sizing: border-box;
         }
 
+        /* Tab Switcher */
+        .tab-menu {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .tab-btn {
+            background: rgba(14, 17, 21, 0.85);
+            border: 1px solid var(--border-blood);
+            color: var(--text-muted);
+            padding: 10px 20px;
+            font-family: 'EB Garamond', serif;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover, .tab-btn.active {
+            color: var(--highlight-gold);
+            border-color: var(--highlight-gold);
+            background: rgba(20, 24, 30, 0.95);
+        }
+
         /* Dropzone styled using site panel textures */
         .dropzone {
             background: var(--panel);
             border: 1px solid var(--border-blood);
-            padding: 60px 20px;
+            padding: 50px 20px;
             text-align: center;
             cursor: pointer;
             transition: all 0.25s ease;
@@ -144,8 +176,46 @@
             color: var(--text-gold);
             white-space: pre-wrap;
             word-break: break-all;
-            max-height: 400px;
+            max-height: 250px;
             overflow-y: auto;
+        }
+
+        .solution-card {
+            background: rgba(5, 6, 8, 0.9);
+            border-left: 3px solid var(--accent-bright-red);
+            padding: 18px;
+            margin-top: 15px;
+        }
+
+        .solution-title {
+            color: var(--accent-bright-red);
+            font-weight: bold;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .solution-steps {
+            color: var(--text-gold);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .solution-steps ol {
+            padding-left: 20px;
+            margin: 8px 0;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--border-subtle);
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            color: #729fcf;
+            margin: 8px 0;
+            white-space: pre-wrap;
         }
     </style>
 </head>
@@ -153,61 +223,226 @@
 
     <header>
         <h1>The Hunter's Dream</h1>
-        <p class="subtitle">PC Log Viewer & Drag Upload Utility</p>
+        <p class="subtitle">PC Log & Screenshot Diagnostic Utility</p>
     </header>
 
     <div class="container">
-        <!-- Drag & Drop Zone -->
-        <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
-            <p>[+] Drag & Drop or Select Log File</p>
-            <span>Supported Formats: .log, .txt</span>
-            <input type="file" id="file-input" accept=".log,.txt" onchange="handleFile(this.files[0])">
+        <!-- Mode Switcher -->
+        <div class="tab-menu">
+            <button class="tab-btn active" id="tab-log-btn" onclick="switchTab('log')">Log File Analyzer</button>
+            <button class="tab-btn" id="tab-img-btn" onclick="switchTab('image')">In-Game Screenshot Analyzer</button>
         </div>
 
-        <!-- Raw Log Content Panel -->
-        <div class="results-section" id="preview-container" style="display: none;">
-            <h2>Log Content Preview</h2>
+        <!-- Log File Dropzone -->
+        <div class="dropzone" id="dropzone-log" onclick="document.getElementById('file-input-log').click()">
+            <p>[+] Drag & Drop or Select Log File</p>
+            <span>Supported Formats: .log, .txt</span>
+            <input type="file" id="file-input-log" accept=".log,.txt" onchange="handleLogFile(this.files[0])">
+        </div>
+
+        <!-- Screenshot Dropzone -->
+        <div class="dropzone" id="dropzone-img" style="display: none;" onclick="document.getElementById('file-input-img').click()">
+            <p>[+] Drag & Drop In-Game Error Screenshot</p>
+            <span>Supported Formats: .png, .jpg, .jpeg</span>
+            <input type="file" id="file-input-img" accept="image/*" onchange="handleImageFile(this.files[0])">
+        </div>
+
+        <!-- Diagnostic & Solution Panel -->
+        <div class="results-section" id="solution-container" style="display: none;">
+            <h2>Diagnostic & Solution Report</h2>
             <div class="file-details" id="file-info"></div>
-            <div class="log-box" id="log-preview"></div>
+            <div id="solution-output"></div>
+        </div>
+
+        <!-- Raw Content Preview -->
+        <div class="results-section" id="preview-container" style="display: none;">
+            <h2 id="preview-title">Raw Content Preview</h2>
+            <div class="log-box" id="raw-preview"></div>
         </div>
     </div>
 
     <script>
-        // Initialize dropzone elements and drag events
-        const dropzone = document.getElementById('dropzone');
+        let currentMode = 'log';
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                dropzone.classList.add('dragover');
-            }, false);
+        function switchTab(mode) {
+            currentMode = mode;
+            document.getElementById('solution-container').style.display = 'none';
+            document.getElementById('preview-container').style.display = 'none';
+
+            if (mode === 'log') {
+                document.getElementById('tab-log-btn').classList.add('active');
+                document.getElementById('tab-img-btn').classList.remove('active');
+                document.getElementById('dropzone-log').style.display = 'block';
+                document.getElementById('dropzone-img').style.display = 'none';
+            } else {
+                document.getElementById('tab-img-btn').classList.add('active');
+                document.getElementById('tab-log-btn').classList.remove('active');
+                document.getElementById('dropzone-img').style.display = 'block';
+                document.getElementById('dropzone-log').style.display = 'none';
+            }
+        }
+
+        // Drag & Drop Event Binds
+        ['dropzone-log', 'dropzone-img'].forEach(id => {
+            const dz = document.getElementById(id);
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dz.addEventListener(eventName, (e) => { e.preventDefault(); dz.classList.add('dragover'); }, false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dz.addEventListener(eventName, (e) => { e.preventDefault(); dz.classList.remove('dragover'); }, false);
+            });
+            dz.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    if (currentMode === 'log') handleLogFile(files[0]);
+                    else handleImageFile(files[0]);
+                }
+            });
         });
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                dropzone.classList.remove('dragover');
-            }, false);
-        });
-
-        dropzone.addEventListener('drop', (e) => {
-            const files = e.dataTransfer.files;
-            if (files.length > 0) handleFile(files[0]);
-        });
-
-        // Handle uploaded or dropped log file
-        function handleFile(file) {
+        // 1. LOG FILE ANALYZER LOGIC
+        function handleLogFile(file) {
             if (!file) return;
-            
-            document.getElementById('file-info').innerText = `File: ${file.name} | Size: ${(file.size/1024).toFixed(1)} KB`;
+            document.getElementById('file-info').innerText = `Loaded Log: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                const content = e.target.result;
-                document.getElementById('log-preview').innerText = content;
+                const text = e.target.result;
+                document.getElementById('raw-preview').innerText = text;
+                document.getElementById('preview-title').innerText = 'Raw Log Content';
                 document.getElementById('preview-container').style.display = 'block';
+
+                analyzeLogContent(text);
             };
             reader.readAsText(file);
+        }
+
+        function analyzeLogContent(text) {
+            const output = document.getElementById('solution-output');
+            output.innerHTML = '';
+            let matched = false;
+
+            // Check for SSL / Disable HTTPS error
+            if (text.includes('error=10 (SSL server verification failed)') || text.includes('ss.info')) {
+                matched = true;
+                output.innerHTML += renderSSLSolution();
+            }
+
+            // Check for Server Info / Login Failure
+            if (text.includes('Failed to acquire Bloodborne server information') || text.includes('Failed to log in to Bloodborne server') || text.includes('shadnet')) {
+                matched = true;
+                output.innerHTML += renderServerInfoSolution();
+            }
+
+            if (!matched) {
+                output.innerHTML = `
+                    <div class="solution-card" style="border-left-color: var(--success-green);">
+                        <div class="solution-title" style="color: var(--success-green);">No Critical Error Signatures Detected</div>
+                        <div class="solution-steps">The uploaded log file does not match known server or SSL error patterns. Please verify your setup or share this log in the Discord support channel.</div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('solution-container').style.display = 'block';
+        }
+
+        // 2. SCREENSHOT OCR ANALYZER LOGIC
+        function handleImageFile(file) {
+            if (!file) return;
+            document.getElementById('file-info').innerText = `Loaded Screenshot: ${file.name} | Processing OCR OCR...`;
+            document.getElementById('solution-output').innerHTML = '<div class="solution-steps">Scanning image text via OCR engine, please wait...</div>';
+            document.getElementById('solution-container').style.display = 'block';
+
+            Tesseract.recognize(file, 'eng')
+                .then(({ data: { text } }) => {
+                    document.getElementById('raw-preview').innerText = text;
+                    document.getElementById('preview-title').innerText = 'Extracted Screenshot Text (OCR)';
+                    document.getElementById('preview-container').style.display = 'block';
+
+                    const output = document.getElementById('solution-output');
+                    output.innerHTML = '';
+
+                    if (text.includes('Failed to acquire Bloodborne server information') || text.toLowerCase().includes('server information')) {
+                        output.innerHTML += renderServerInfoSolution();
+                    } else if (text.includes('Failed to log in to Bloodborne server') || text.toLowerCase().includes('log in to bloodborne')) {
+                        output.innerHTML += renderLoginFailureSolution();
+                    } else {
+                        output.innerHTML = `
+                            <div class="solution-card" style="border-left-color: var(--highlight-gold);">
+                                <div class="solution-title" style="color: var(--highlight-gold);">Unrecognized Image Text</div>
+                                <div class="solution-steps">Could not explicitly detect a known error prompt from the screenshot. Please check if the screenshot is clear or upload your <b>shadps4.log</b> file instead.</div>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('solution-output').innerHTML = `<div class="solution-steps" style="color: var(--accent-bright-red);">OCR Processing Error: ${err.message}</div>`;
+                });
+        }
+
+        // REUSABLE SOLUTION TEMPLATES (ENGLISH)
+        function renderServerInfoSolution() {
+            return `
+                <div class="solution-card">
+                    <div class="solution-title">[!] Failed to Acquire Bloodborne Server Information</div>
+                    <div class="solution-steps">
+                        <ol>
+                            <li><b>ShadNet Account Required:</b> Make sure you have an active ShadNet account and are logged in via <i>shadqtlauncher</i>. If you don't have an account, register at <a href="https://shadnet.shadps4.net/" target="_blank" style="color: var(--highlight-gold);">https://shadnet.shadps4.net/</a>.</li>
+                            <li><b>Verify <i>host_overrides.json</i>:</b> Ensure the contents inside your <code>shadps4/host_overrides.json</code> file match:
+                                <div class="code-block">{
+  "_comment": "shadPS4 HTTP host overrides.",
+  "https://ss4.scej-network.jp:20443": "https://thehuntersdream.com:20443",
+  "ss4.scej-network.jp": "https://thehuntersdream.com:20443",
+  "bb-playlog-test.s3.amazonaws.com": "https://thehuntersdream.com:20443",
+  "bb-playlog-prod.s3.amazonaws.com": "https://thehuntersdream.com:20443"
+}</div>
+                            </li>
+                            <li><b>Verify <i>config.json</i>:</b> Confirm that the <code>"Network"</code> block in your <code>config.json</code> matches:
+                                <div class="code-block">"Network": {
+    "connected_to_network": true,
+    "disable_https": true,
+    "enable_upnp": true,
+    "p2p_port": 3658,
+    "shad_net_enabled": true,
+    "shadnet_server": "srv.shadps4.net:31313",
+    "shadnet_webapi_server": "http://srv.shadps4.net:31315",
+    "signaling_info": ""
+}</div>
+                            </li>
+                            <li><b>Alternative Configuration / Cleanup:</b> If the issue persists:
+                                <ul>
+                                    <li>Delete the <code>custom_configs</code> directory inside your shadps4 folder (unless you hold specific custom profiles for other games).</li>
+                                    <li>Or, in <i>shadqtlauncher</i>, right-click Bloodborne &gt; <b>Game Specific Settings</b> &gt; <b>Experimental</b>. Set <i>Server:</i> <code>srv.shadps4.net:31313</code> and <i>WebAPI Server:</i> <code>http://srv.shadps4.net:31315</code>. Enable <b>uPnP</b> if you plan to use co-op/invasion tools.</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSSLSolution() {
+            return `
+                <div class="solution-card">
+                    <div class="solution-title">[!] SSL Server Verification Failed (error=10)</div>
+                    <div class="solution-steps">
+                        This error indicates that HTTPS verification is intercepting custom host routing.<br>
+                        <b>Resolution:</b> Ensure that <code>"disable_https": true</code> is explicitly set inside your <code>config.json</code> under the <code>"Network"</code> section. Also double-check that all steps from the server acquisition checklist above have been applied.
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderLoginFailureSolution() {
+            return `
+                <div class="solution-card">
+                    <div class="solution-title">[!] Failed to Log In to Bloodborne Server</div>
+                    <div class="solution-steps">
+                        <b>Resolution:</b> This error typically stems from an invalid or misconfigured <code>host_overrides.json</code> file.<br>
+                        Verify that your <code>host_overrides.json</code> file exists in the main shadps4 directory and correctly routes <code>ss4.scej-network.jp</code> to <code>https://thehuntersdream.com:20443</code>.
+                    </div>
+                </div>
+            `;
         }
     </script>
 </body>

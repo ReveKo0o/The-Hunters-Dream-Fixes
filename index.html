@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Hunter's Dream // PC Log & Error Inspector</title>
+    <style>
+        :root {
+            --bg-dark: #050608;
+            --text-gold: #c5a880;
+            --border-color: #262626;
+            --panel-bg: rgba(13, 13, 13, 0.85);
+            --error-red: #ff4444;
+            --success-green: #00ff66;
+        }
+
+        body {
+            font-family: 'EB Garamond', 'Georgia', serif;
+            background: radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.75) 100%), url('/static/img/game/menu-bg.jpg') center top / cover fixed, var(--bg-dark);
+            color: var(--text-gold);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.5;
+            font-size: 1.02rem;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        header {
+            width: 100%;
+            text-align: center;
+            padding: 40px 0 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(5, 6, 8, 0.9);
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            letter-spacing: 3px;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        p.subtitle {
+            font-size: 0.85rem;
+            color: #888;
+            letter-spacing: 1px;
+            margin-top: 5px;
+            text-transform: uppercase;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 850px;
+            padding: 0 20px 50px 20px;
+            box-sizing: border-box;
+        }
+
+        .dropzone {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 30px;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--text-gold);
+            background: rgba(20, 20, 20, 0.9);
+        }
+
+        .dropzone p {
+            margin: 0;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .dropzone span {
+            font-size: 0.8rem;
+            color: #777;
+            display: block;
+            margin-top: 10px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .results-section {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-top: 0;
+            letter-spacing: 1px;
+        }
+
+        .log-box {
+            background: #020203;
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            color: var(--success-green);
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .diagnosis-item {
+            background: rgba(10, 10, 10, 0.9);
+            border-left: 3px solid var(--text-gold);
+            padding: 15px;
+            margin-top: 12px;
+            font-size: 0.9rem;
+        }
+
+        .diagnosis-item.error {
+            border-left-color: var(--error-red);
+        }
+
+        .diagnosis-title {
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .diagnosis-item.error .diagnosis-title {
+            color: var(--error-red);
+        }
+
+        .solution-text {
+            color: #ccc;
+            font-size: 0.85rem;
+            font-family: 'Courier New', Courier, monospace;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>The Hunter's Dream</h1>
+        <p class="subtitle">PC Log Diagnostic & Error Resolution Utility</p>
+    </header>
+
+    <div class="container">
+        <!-- Drag & Drop Zone -->
+        <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+            <p>[+] Drag & Drop or Select Log File</p>
+            <span>Supported Formats: .log, .txt</span>
+            <input type="file" id="file-input" accept=".log,.txt" onchange="handleFile(this.files[0])">
+        </div>
+
+        <!-- Results / Solution Panel -->
+        <div class="results-section" id="results-container" style="display: none;">
+            <h2>Diagnostic & Resolution Report</h2>
+            <div id="file-info" style="font-size: 0.8rem; color: #888; margin-bottom: 15px;"></div>
+            <div id="detected-errors"></div>
+        </div>
+
+        <!-- Raw Log Preview -->
+        <div class="results-section" id="preview-container" style="display: none;">
+            <h2>Raw Log Content</h2>
+            <div class
